@@ -1,0 +1,146 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>Detalhes dos Itens | Painel Executivo de Certificados</title>
+  <link rel="stylesheet" href="/static/dashboard-common.css" />
+  <link rel="stylesheet" href="/static/analise.css" />
+</head>
+<body>
+  <div id="toast-container"></div>
+
+  <div class="alert-strip">
+    <div class="alert-strip-inner">
+      <div class="alert-left">
+        <span class="alert-dot"></span>
+        <strong id="mainAlert">Base sem itens críticos no momento</strong>
+      </div>
+      <div class="alert-actions">
+        <button class="btn" id="exportBtn" type="button">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <main class="page-shell analysis-shell">
+    <section class="top-nav analysis-nav">
+      <div class="nav-copy">
+        <strong>Detalhes dos itens e tratamento operacional</strong>
+        <span>Central de operações: importe, atualize a base e trate os certificados item a item. O monitoramento contínuo fica na tela de TV.</span>
+      </div>
+      <div class="nav-tabs">
+        <a class="nav-tab" href="/acompanhamento">Monitoramento</a>
+        <a class="nav-tab active" href="/analise">Detalhes dos itens</a>
+      </div>
+    </section>
+
+    <section class="ops-overview">
+      <article class="ops-card total">
+        <small>Total da base</small>
+        <strong id="analysisTotal">0</strong>
+        <span>Quantidade total de certificados carregados.</span>
+      </article>
+      <article class="ops-card critical">
+        <small>Impacto imediato</small>
+        <strong id="impactCount">0</strong>
+        <span>Itens expirados e fora da condição aceitável.</span>
+      </article>
+      <article class="ops-card warning">
+        <small>Alta prioridade</small>
+        <strong id="highRiskCount">0</strong>
+        <span>Certificados que vencem em até 5 dias.</span>
+      </article>
+      <article class="ops-card stable">
+        <small>Base estável</small>
+        <strong id="stableCount">0</strong>
+        <span>Itens fora da janela de risco imediato.</span>
+      </article>
+    </section>
+
+    <section class="ops-layout">
+      <section class="ops-main">
+        <section class="actions-bar">
+          <div class="actions-left">
+            <label class="btn btn-import" for="fileInputPfx">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Importar certificado (.pfx)
+            </label>
+            <input type="file" id="fileInputPfx" accept=".pfx" hidden />
+            <button class="btn btn-update" id="updateBtn" type="button">
+              <svg id="updateIcon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.13-3.36L23 10M1 14l5.36 4.36A9 9 0 0 0 20.49 15"/></svg>
+              Atualizar base
+            </button>
+          </div>
+          <div class="actions-right">
+            <div class="upload-hint" id="uploadPfxMsg">Importe certificados ou atualize a leitura dos arquivos já presentes na base.</div>
+          </div>
+        </section>
+
+        <section class="inventory-shell">
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <h2>Inventário operacional</h2>
+              <p>Use busca e filtros para encontrar rápido os certificados que precisam de tratamento.</p>
+            </div>
+
+            <div class="toolbar-right">
+              <label class="search">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M21 21L16.65 16.65M18 10.5C18 14.6421 14.6421 18 10.5 18C6.35786 18 3 14.6421 3 10.5C3 6.35786 6.35786 3 10.5 3C14.6421 3 18 6.35786 18 10.5Z" stroke="#6e7b77" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+                <input type="text" id="searchInput" placeholder="Buscar por empresa ou CNPJ" />
+              </label>
+
+              <div class="chips">
+                <button class="chip active" type="button" data-filter="todos">Todos</button>
+                <button class="chip" type="button" data-filter="criticos">Críticos</button>
+                <button class="chip" type="button" data-filter="7dias">Até 5 dias</button>
+                <button class="chip" type="button" data-filter="15dias">Até 15 dias</button>
+                <button class="chip" type="button" data-filter="validos">Válidos</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="board">
+            <div class="board-head">
+              <div>Empresa</div>
+              <div>CNPJ</div>
+              <div>Vencimento</div>
+              <div>Dias</div>
+              <div>Risco</div>
+              <div>Situação</div>
+              <div>Ação</div>
+            </div>
+            <div class="rows" id="rows"></div>
+          </div>
+        </section>
+      </section>
+
+    </section>
+  </main>
+
+  <!-- Drawer de detalhes -->
+  <div class="drawer-overlay" id="drawerOverlay" aria-hidden="true"></div>
+  <aside class="details-drawer" id="detailsDrawer" role="dialog" aria-modal="true" aria-label="Detalhes do certificado">
+    <div class="drawer-header">
+      <div>
+        <h3>Detalhes do item</h3>
+        <p id="drawerSubtitle">--</p>
+      </div>
+      <button class="drawer-close" id="drawerClose" type="button" aria-label="Fechar">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="drawer-body" id="detailContent"></div>
+  </aside>
+
+  <script src="/static/dashboard-data.js"></script>
+  <script src="/static/analise.js"></script>
+</body>
+</html>

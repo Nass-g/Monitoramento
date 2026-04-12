@@ -1,0 +1,125 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>Monitoramento | Certificados Digitais</title>
+  <link rel="stylesheet" href="/static/dashboard-common.css" />
+  <link rel="stylesheet" href="/static/monitor-tv.css" />
+</head>
+<body>
+  <main class="page-shell tv-shell">
+
+    <!-- Cabeçalho -->
+    <header class="tv-header">
+      <section class="tv-brand" id="tvBrand">
+        <div class="brand-mark">
+          <img src="/static/logo.png" alt="Logo" />
+        </div>
+        <div class="tv-brand-copy">
+          <small>Monitoramento em tempo real</small>
+          <strong>Central de Certificados Digitais</strong>
+          <span id="tvAlert" class="tv-alert-text">Carregando...</span>
+        </div>
+      </section>
+    </header>
+
+    <!-- Navegação -->
+    <nav class="top-nav tv-nav">
+      <div class="nav-copy">
+        <div class="nav-live-title">
+          <span class="nav-live-dot"></span>
+          <strong>Painel Executivo</strong>
+        </div>
+        <span>Atualização automática a cada 60s — para importar certificados use <em>Detalhes dos itens</em>.</span>
+      </div>
+      <div class="nav-tabs">
+        <a class="nav-tab active" href="/acompanhamento">Monitoramento</a>
+        <a class="nav-tab" href="/analise">Detalhes dos itens</a>
+      </div>
+    </nav>
+
+    <!-- KPIs -->
+    <section class="kpi-row">
+
+      <article class="kpi-card kpi-expired">
+        <small>Expirados</small>
+        <strong id="kpiExpired">—</strong>
+        <span class="kpi-sub-label">já vencidos</span>
+      </article>
+
+      <article class="kpi-card kpi-attention">
+        <small>À vencer</small>
+        <strong id="kpiAttention">—</strong>
+        <span class="kpi-sub-label">próximos 15 dias</span>
+      </article>
+
+      <article class="kpi-card kpi-stable">
+        <small>Válidos</small>
+        <strong id="kpiStable">—</strong>
+        <span class="kpi-sub-label">dentro da validade</span>
+      </article>
+
+      <article class="kpi-card kpi-total">
+        <small>Total</small>
+        <strong id="kpiTotal">—</strong>
+        <div class="kpi-health-bar" id="kpiHealthBar"></div>
+        <span class="kpi-sub" id="kpiTotalSub">certificados monitorados</span>
+      </article>
+
+      <div class="kpi-meta">
+        <span class="hero-badge live" id="liveBadge">
+          <span class="live-dot"></span>Ao vivo
+        </span>
+        <div class="kpi-time">
+          <small>Última atualização</small>
+          <strong id="lastUpdate">--</strong>
+          <span>Próximo refresh em <strong id="countdown">60</strong>s</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Urgência por empresa -->
+    <article class="tv-panel bars-panel">
+      <div class="panel-head">
+        <div class="panel-head-left">
+          <small class="section-label">Urgência por empresa</small>
+          <span class="section-sub">barra maior = mais urgente</span>
+        </div>
+        <div class="bars-legend">
+          <span class="bl danger">Expirado / Crítico</span>
+          <span class="bl warn">Em atenção</span>
+          <span class="bl ok">Estável</span>
+        </div>
+      </div>
+      <div class="hbar-list" id="hbarList">
+        <div class="tv-loading">Carregando...</div>
+      </div>
+    </article>
+
+    <!-- Calendário de vencimentos -->
+    <article class="tv-panel line-panel">
+      <div class="panel-head">
+        <div class="panel-head-left">
+          <small class="section-label">Calendário de vencimentos</small>
+          <span class="section-sub">chip na data exata de cada certificado</span>
+        </div>
+        <div class="bars-legend">
+          <span class="bl danger">Expirado / Crítico</span>
+          <span class="bl warn">Em atenção</span>
+          <span class="bl ok">Estável</span>
+        </div>
+      </div>
+      <div class="line-wrap" id="lineWrap"></div>
+    </article>
+
+  </main>
+
+  <script src="/static/dashboard-data.js"></script>
+  <script src="/static/acompanhamento.js"></script>
+</body>
+</html>

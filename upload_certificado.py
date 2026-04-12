@@ -1,4 +1,5 @@
-import os
+﻿import os
+import sys
 import json
 from flask import Flask, request, jsonify, send_from_directory, redirect, make_response
 from cryptography.hazmat.primitives.serialization import pkcs12
@@ -14,8 +15,8 @@ os.makedirs('./static/certificados', exist_ok=True)
 
 
 # Serve o dashboard sempre sem cache (evita versão desatualizada no browser)
-def _serve_index():
-    resp = make_response(send_from_directory('static', 'Index.html'))
+def _serve_page(filename):
+    resp = make_response(send_from_directory('static', filename))
     resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     resp.headers['Pragma'] = 'no-cache'
     resp.headers['Expires'] = '0'
@@ -23,13 +24,13 @@ def _serve_index():
 
 @app.route('/')
 @app.route('/dashboard')
+@app.route('/acompanhamento')
 def index():
-    return _serve_index()
+    return _serve_page('acompanhamento.html')
 
-# Override do arquivo estático para garantir sem cache
-@app.route('/static/Index.html')
-def static_index():
-    return _serve_index()
+@app.route('/analise')
+def analise():
+    return _serve_page('analise.html')
 
 
 
@@ -88,7 +89,7 @@ def upload_file():
 
     pfx_data = file.read()
 
-    # Arquivo físico já existe no disco?
+    # Arquivo fÃ­sico jÃ¡ existe no disco?
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
     if os.path.exists(filepath):
         # Buscar dados completos no resultados.json
@@ -195,5 +196,20 @@ def upload_file():
 
     return jsonify({'success': True, 'filename': file.filename}), 200
 
+
+@app.route('/atualizar', methods=['POST'])
+def atualizar_certificados():
+    try:
+        import importlib
+        if 'ler_certificados' in sys.modules:
+            importlib.reload(sys.modules['ler_certificados'])
+        import ler_certificados
+        ler_certificados.varrer_certificados()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(port=5000, debug=False)
+

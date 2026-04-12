@@ -1,0 +1,226 @@
+﻿:root {
+  /* Surfaces */
+  --s1: rgba(10, 24, 50, 0.97);
+  --s2: rgba(255, 255, 255, 0.04);
+
+  /* Brand */
+  --brand-700: #143f84;
+  --brand-500: #2d6dca;
+  --brand-400: #4d87db;
+  --brand-300: #8eb4f0;
+
+  /* Text */
+  --text:      #ddeaff;
+  --text-soft: #a2b8d4;
+  --muted:     #607a96;
+
+  /* Borders */
+  --border:     rgba(141, 176, 226, 0.14);
+  --border-sub: rgba(141, 176, 226, 0.07);
+
+  /* Semantic */
+  --ok:        #29b372;
+  --ok-bg:     rgba(41, 179, 114, 0.12);
+  --warn:      #dfa020;
+  --warn-bg:   rgba(223, 160, 32, 0.12);
+  --danger:    #de5050;
+  --danger-bg: rgba(222, 80, 80, 0.12);
+
+  /* Radius (nomes legado mantidos) */
+  --radius-xl: 22px;
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --r-xl: 22px;
+  --r-lg: 16px;
+  --r-md: 12px;
+
+  /* Shadows */
+  --sh-lg: 0 24px 60px rgba(0, 0, 0, 0.40);
+  --sh-md: 0 12px 28px rgba(0, 0, 0, 0.30);
+  --sh-sm: 0 4px 12px rgba(0, 0, 0, 0.20);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  font-family: "Segoe UI Variable", "Aptos", "Inter", system-ui, sans-serif;
+  background:
+    radial-gradient(ellipse 80% 50% at 15% 0%, rgba(25, 70, 165, 0.20), transparent),
+    radial-gradient(ellipse 60% 40% at 85% 100%, rgba(15, 50, 130, 0.14), transparent),
+    linear-gradient(180deg, #060e1b 0%, #070d18 100%);
+  color: var(--text);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.page-shell {
+  width: min(1440px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 13px 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: rgba(8, 20, 42, 0.86);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--sh-sm);
+}
+
+.nav-copy strong {
+  display: block;
+  font-size: 16px;
+  letter-spacing: -0.02em;
+}
+
+.nav-copy span {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.nav-tabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.nav-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 9px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-soft);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: all 0.16s ease;
+}
+
+.nav-tab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.18);
+  flex-shrink: 0;
+}
+
+.brand-mark img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.btn,
+.btn-secondary,
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 9px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-soft);
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.16s ease;
+}
+
+.btn:hover,
+.btn-secondary:hover,
+.btn-primary:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn svg,
+.btn-secondary svg,
+.btn-primary svg {
+  flex-shrink: 0;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.spin-loop {
+  animation: spin-loop 0.9s linear infinite;
+}
+
+@keyframes spin-loop {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 900px) {
+  .page-shell {
+    width: min(100%, calc(100% - 20px));
+  }
+
+  .top-nav {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .nav-tabs {
+    width: 100%;
+  }
+
+  .nav-tab {
+    flex: 1 1 auto;
+  }
+}

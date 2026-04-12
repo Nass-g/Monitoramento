@@ -1,0 +1,387 @@
+﻿(function () {
+  const {
+    alertMessage,
+    countSummary,
+    exportCertificates,
+    formatCNPJ,
+    loadCertificates,
+    removeCertificate,
+    setText,
+    sortByPriority,
+    updateCertificates,
+  } = window.DashboardData;
+
+  const state = {
+    certificates: [],
+    activeFilter: 'todos',
+    selectedCertificate: null,
+  };
+
+  const rows = document.getElementById('rows');
+  const searchInput = document.getElementById('searchInput');
+  const filterButtons = document.querySelectorAll('.chip');
+  const updateBtn = document.getElementById('updateBtn');
+  const updateIcon = document.getElementById('updateIcon');
+  const uploadHint = document.getElementById('uploadPfxMsg');
+  const detailContent = document.getElementById('detailContent');
+  const fileInput = document.getElementById('fileInputPfx');
+  const drawer = document.getElementById('detailsDrawer');
+  const drawerOverlay = document.getElementById('drawerOverlay');
+  const drawerClose = document.getElementById('drawerClose');
+  const drawerSubtitle = document.getElementById('drawerSubtitle');
+
+  function openDrawer() {
+    drawer.classList.add('open');
+    drawerOverlay.classList.add('open');
+    document.body.classList.add('drawer-active');
+  }
+
+  function closeDrawer() {
+    drawer.classList.remove('open');
+    drawerOverlay.classList.remove('open');
+    document.body.classList.remove('drawer-active');
+    state.selectedCertificate = null;
+    rows.querySelectorAll('.row.selected').forEach(r => r.classList.remove('selected'));
+  }
+
+  drawerClose.addEventListener('click', closeDrawer);
+  drawerOverlay.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeDrawer();
+  });
+
+  function progressColor(status) {
+    if (status === 'Valido') return 'linear-gradient(90deg, #143f84, #4d87db)';
+    if (status === 'A vencer') return 'linear-gradient(90deg, #d19216, #efc058)';
+    return 'linear-gradient(90deg, #c63b3b, #ef7d7d)';
+  }
+
+  function progressWidth(days) {
+    if (days <= 0) return 100;
+    if (days <= 5) return 92;
+    if (days <= 15) return 68;
+    return Math.min(56, Math.max(18, (days / 180) * 56));
+  }
+
+  function normalize(value) {
+    return (value || '').replace(/\D/g, '');
+  }
+
+  function rowClass(item) {
+    if (item.duplicado) return 'duplicated';
+    if (item.dias < 0) return 'expired';
+    if (item.dias <= 5) return 'warning-high';
+    if (item.dias <= 15) return 'warning-low';
+    return '';
+  }
+
+  function badgeClass(status) {
+    if (status === 'Valido') return 'ok';
+    if (status === 'A vencer') return 'warn';
+    return 'danger';
+  }
+
+  function daysLabel(days) {
+    if (days < 0) return `${Math.abs(days)} dia(s) vencido(s)`;
+    if (days === 0) return 'Vence hoje';
+    return `${days} dia(s)`;
+  }
+
+  function filteredCertificates() {
+    const term = searchInput.value.trim().toLowerCase();
+    let data = sortByPriority(state.certificates);
+
+    if (state.activeFilter === 'criticos') {
+      data = data.filter(item => item.dias < 0);
+    } else if (state.activeFilter === '7dias') {
+      data = data.filter(item => item.dias >= 0 && item.dias <= 5);
+    } else if (state.activeFilter === '15dias') {
+      data = data.filter(item => item.dias >= 0 && item.dias <= 15);
+    } else if (state.activeFilter === 'validos') {
+      data = data.filter(item => item.dias > 15);
+    }
+
+    if (term) {
+      const termDigits = normalize(term);
+      data = data.filter(item =>
+        item.empresa.toLowerCase().includes(term) ||
+        item.cnpj.toLowerCase().includes(term) ||
+        normalize(item.cnpj).includes(termDigits)
+      );
+    }
+
+    return data;
+  }
+
+  function renderSummary() {
+    const summary = countSummary(state.certificates);
+
+    setText('mainAlert', alertMessage(summary));
+    setText('analysisTotal', summary.total);
+    setText('impactCount', summary.expired);
+    setText('highRiskCount', summary.next5);
+    setText('stableCount', summary.stable);
+    setText('lastUpdateInline', new Date().toLocaleString('pt-BR'));
+  }
+
+  function renderDetails(cert) {
+    if (!cert) return;
+
+    drawerSubtitle.textContent = cert.empresa;
+
+    detailContent.innerHTML = `
+      <div class="detail-list">
+        <div class="detail-item">
+          <strong>Empresa</strong>
+          <span>${cert.empresa}</span>
+        </div>
+        <div class="detail-item">
+          <strong>CNPJ</strong>
+          <span>${formatCNPJ(cert.cnpj)}</span>
+        </div>
+        <div class="detail-item">
+          <strong>Vencimento</strong>
+          <span>${cert.vencimento}</span>
+        </div>
+        <div class="detail-item">
+          <strong>Janela</strong>
+          <span>${daysLabel(cert.dias)}</span>
+        </div>
+        <div class="detail-item">
+          <strong>Situação</strong>
+          <span>${cert.status}</span>
+        </div>
+        <div class="detail-item">
+          <strong>Risco</strong>
+          <span>${cert.risk.label}</span>
+        </div>
+        <div class="detail-item">
+          <strong>Arquivo</strong>
+          <span>${cert.arquivo || '-'}</span>
+        </div>
+        <div class="detail-item">
+          <strong>Senha utilizada</strong>
+          <span>${cert.senha_utilizada || '-'}</span>
+        </div>
+      </div>
+    `;
+
+    openDrawer();
+  }
+
+  function rowActionsTemplate(index) {
+    return `
+      <div class="row-actions">
+        <button class="table-action btn-detalhes" type="button" title="Ver detalhes" data-idx="${index}" aria-label="Ver detalhes">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M21 14v7H3V3h7"/></svg>
+        </button>
+        <button class="table-action remove btn-remover" type="button" title="Remover certificado" data-idx="${index}" aria-label="Remover certificado">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6 17.874 19.142A2 2 0 0 1 15.882 21H8.118a2 2 0 0 1-1.992-1.858L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </button>
+      </div>
+    `;
+  }
+
+  function renderRows() {
+    const data = filteredCertificates();
+
+    if (!data.length) {
+      rows.innerHTML = '<div class="empty-state">Nenhum certificado encontrado para os filtros aplicados.</div>';
+      return;
+    }
+
+    rows.innerHTML = data.map((item, index) => {
+      const selectedClass = state.selectedCertificate && state.selectedCertificate.cnpj === item.cnpj ? ' selected' : '';
+      const duplicateBadge = item.duplicado
+        ? '<span class="dup-badge" title="Mesmo CNPJ e vencimento de outro certificado">Duplicado</span>'
+        : '';
+
+      return `
+        <div class="row ${rowClass(item)}${selectedClass}" data-row-idx="${index}">
+          <div class="company">
+            <strong title="${item.empresa}">${item.empresa}</strong>
+            <span>${duplicateBadge}</span>
+          </div>
+          <div class="cell" data-label="CNPJ">${formatCNPJ(item.cnpj)}</div>
+          <div class="cell" data-label="Vencimento">${item.vencimento}</div>
+          <div class="cell days" data-label="Dias">${item.dias}</div>
+          <div class="cell" data-label="Risco"><span class="risk ${item.risk.className}">${item.risk.label}</span></div>
+          <div class="status-wrap" data-label="Situação">
+            <span class="badge ${badgeClass(item.status)}">${item.status}</span>
+            <div class="bar"><div style="width:${progressWidth(item.dias)}%; background:${progressColor(item.status)}"></div></div>
+          </div>
+          <div class="cell" data-label="Ação">${rowActionsTemplate(index)}</div>
+        </div>
+      `;
+    }).join('');
+
+    rows.querySelectorAll('[data-row-idx]').forEach(row => {
+      row.addEventListener('click', (event) => {
+        if (event.target.closest('.btn-remover') || event.target.closest('.btn-detalhes')) return;
+        const cert = data[Number(row.dataset.rowIdx)];
+        state.selectedCertificate = cert;
+        renderRows();
+        renderDetails(cert);
+      });
+    });
+
+    rows.querySelectorAll('.btn-detalhes').forEach(button => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const cert = data[Number(button.dataset.idx)];
+        state.selectedCertificate = cert;
+        renderRows();
+        renderDetails(cert);
+      });
+    });
+
+    rows.querySelectorAll('.btn-remover').forEach(button => {
+      button.addEventListener('click', async (event) => {
+        event.stopPropagation();
+        const cert = data[Number(button.dataset.idx)];
+        if (!confirm(`Remover certificado da empresa "${cert.empresa}"?`)) return;
+
+        const response = await removeCertificate(cert.cnpj);
+        if (response.success) {
+          showToast('ok', 'Certificado removido', cert.empresa);
+          await refreshData();
+        } else {
+          showToast('err', 'Falha ao remover', response.error || 'Erro ao remover certificado.');
+        }
+      });
+    });
+  }
+
+  function showToast(type, title, body, duration) {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toast-container';
+      document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+      <div>
+        <div class="toast-title">${title}</div>
+        ${body ? `<div>${body}</div>` : ''}
+      </div>
+    `;
+
+    container.appendChild(toast);
+
+    const timeout = duration || (type === 'warn' ? 8000 : 3500);
+    setTimeout(() => {
+      toast.classList.add('hide');
+      setTimeout(() => toast.remove(), 300);
+    }, timeout);
+  }
+
+  function setUploadMessage(html) {
+    uploadHint.innerHTML = html;
+  }
+
+  async function handleUpload(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    setUploadMessage('Enviando certificado...');
+
+    try {
+      const response = await fetch('/upload', { method: 'POST', body: formData });
+      const data = await response.json();
+
+      if (data.duplicate) {
+        const info = data.duplicate_info || {};
+        const empresa = info.nome || info.arquivo || file.name;
+        const cnpj = info.cnpj ? ` | CNPJ: ${info.cnpj}` : '';
+        const venc = info.vencimento ? ` | Vencimento: ${info.vencimento}` : '';
+
+        setUploadMessage(`<span style="color: #d6961d; font-weight: 700;">Aviso: certificado já existe na base.</span>`);
+        showToast('warn', 'Certificado já existe', `${empresa}${cnpj}${venc}`, 9000);
+      } else if (data.success) {
+        setUploadMessage('<span style="color: #1f9d62; font-weight: 700;">Sucesso: certificado importado.</span>');
+        showToast('ok', 'Certificado importado', file.name);
+        await refreshData();
+      } else {
+        const error = data.error || 'Verifique o arquivo e tente novamente.';
+        setUploadMessage(`<span style="color: #d54a4a; font-weight: 700;">Erro: ${error}</span>`);
+        showToast('err', 'Falha ao importar', error);
+      }
+    } catch (error) {
+      setUploadMessage('<span style="color: #d54a4a; font-weight: 700;">Erro: conexão com o servidor indisponível.</span>');
+      showToast('err', 'Erro de conexão', 'Não foi possível conectar ao servidor.');
+    }
+  }
+
+  async function refreshData() {
+    updateBtn.disabled = true;
+    updateIcon.classList.add('spin-loop');
+
+    try {
+      state.certificates = await loadCertificates();
+      renderSummary();
+      renderRows();
+    } catch (error) {
+      state.certificates = [];
+      renderSummary();
+      renderRows();
+    } finally {
+      updateBtn.disabled = false;
+      updateIcon.classList.remove('spin-loop');
+    }
+  }
+
+  async function handleUpdate() {
+    updateBtn.disabled = true;
+    updateIcon.classList.add('spin-loop');
+    setUploadMessage('Atualizando base de certificados...');
+
+    try {
+      const result = await updateCertificates();
+      if (result.success) {
+        setUploadMessage('<span style="color: #1f9d62; font-weight: 700;">Base atualizada com sucesso.</span>');
+        showToast('ok', 'Base atualizada', 'Leitura dos certificados concluída.');
+        state.certificates = await loadCertificates();
+        renderSummary();
+        renderRows();
+      } else {
+        const msg = result.error || 'Erro ao atualizar a base.';
+        setUploadMessage(`<span style="color: #d54a4a; font-weight: 700;">Erro: ${msg}</span>`);
+        showToast('err', 'Falha ao atualizar', msg);
+      }
+    } catch {
+      setUploadMessage('<span style="color: #d54a4a; font-weight: 700;">Erro: conexão com o servidor indisponível.</span>');
+      showToast('err', 'Erro de conexão', 'Não foi possível conectar ao servidor.');
+    } finally {
+      updateBtn.disabled = false;
+      updateIcon.classList.remove('spin-loop');
+    }
+  }
+
+  filterButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      filterButtons.forEach(node => node.classList.remove('active'));
+      button.classList.add('active');
+      state.activeFilter = button.dataset.filter;
+      renderRows();
+    });
+  });
+
+  searchInput.addEventListener('input', renderRows);
+
+  fileInput.addEventListener('change', async function () {
+    const file = this.files[0];
+    if (!file) return;
+    await handleUpload(file);
+    this.value = '';
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    exportCertificates(state.certificates);
+  });
+
+  updateBtn.addEventListener('click', handleUpdate);
+
+  refreshData();
+})();
