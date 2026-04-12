@@ -1,4 +1,5 @@
 ﻿import os
+import re
 import sys
 import json
 import time
@@ -8,16 +9,17 @@ from werkzeug.utils import secure_filename
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.hazmat.backends import default_backend
 
-UPLOAD_FOLDER = './certificados/'
+BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'certificados')
 ALLOWED_EXTENSIONS = {'pfx'}
 
 # Timestamp gerado uma vez ao iniciar o servidor — garante JS sempre fresco no browser
 _BOOT_TS = str(int(time.time()))
 
-app = Flask(__name__, static_folder='static', static_url_path='/static')
+app = Flask(__name__, static_folder=os.path.join(BASE_DIR, 'static'), static_url_path='/static')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs('./static/certificados', exist_ok=True)
+os.makedirs(os.path.join(BASE_DIR, 'static', 'certificados'), exist_ok=True)
 
 
 @app.after_request
@@ -32,11 +34,9 @@ def add_no_cache(response):
 
 # Serve o dashboard sempre sem cache, injetando versao dinamica nos scripts
 def _serve_page(filename):
-    filepath = os.path.join('static', filename)
+    filepath = os.path.join(BASE_DIR, 'static', filename)
     with open(filepath, 'r', encoding='utf-8') as f:
         content = f.read()
-    # Substitui qualquer ?v=XXXX pelo timestamp atual do boot
-    import re
     content = re.sub(r'\?v=[^"]+', f'?v={_BOOT_TS}', content)
     resp = make_response(content, 200)
     resp.headers['Content-Type'] = 'text/html; charset=utf-8'
@@ -69,7 +69,7 @@ def remover_certificado():
     if not cnpj:
         return jsonify({'error': 'CNPJ não informado'}), 400
     try:
-        with open('./certificados/resultados.json', 'r', encoding='utf-8') as f:
+        with open(os.path.join(BASE_DIR, 'certificados', 'resultados.json'), 'r', encoding='utf-8') as f:
             resultados = json.loads(f.read())
         cert = next((c for c in resultados if c.get('cnpj') == cnpj), None)
         if not cert:
@@ -78,18 +78,18 @@ def remover_certificado():
         # Tentar remover arquivo se existir
         nome_arquivo = cert.get('arquivo')
         if nome_arquivo:
-            caminho = os.path.join(app.config['UPLOAD_FOLDER'], nome_arquivo)
+            caminho = os.path.join(UPLOAD_FOLDER, nome_arquivo)
             if os.path.exists(caminho):
                 os.remove(caminho)
         
         # Remover do resultados.json
         resultados = [c for c in resultados if c.get('cnpj') != cnpj]
-        with open('./certificados/resultados.json', 'w', encoding='utf-8') as f:
+        with open(os.path.join(BASE_DIR, 'certificados', 'resultados.json'), 'w', encoding='utf-8') as f:
             json.dump(resultados, f, ensure_ascii=False, indent=2)
         
         # Sincronizar com static/certificados/resultados.json
         try:
-            with open('./static/certificados/resultados.json', 'w', encoding='utf-8') as f:
+            with open(os.path.join(BASE_DIR, 'static', 'certificados', 'resultados.json'), 'w', encoding='utf-8') as f:
                 json.dump(resultados, f, ensure_ascii=False, indent=2)
         except:
             pass
@@ -117,12 +117,12 @@ def upload_file():
     pfx_data = file.read()
 
     # Arquivo físico já existe no disco?
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], safe_name)
+    filepath = os.path.join(UPLOAD_FOLDER, safe_name)
     if os.path.exists(filepath):
         # Buscar dados completos no resultados.json
         info = {'arquivo': safe_name, 'nome': '', 'cnpj': '', 'vencimento': ''}
         try:
-            with open('./certificados/resultados.json', 'r', encoding='utf-8') as f:
+            with open(os.path.join(BASE_DIR, 'certificados', 'resultados.json'), 'r', encoding='utf-8') as f:
                 resultados = json.load(f)
             encontrado = next((r for r in resultados if r.get('arquivo') == safe_name), None)
             if encontrado:
@@ -140,7 +140,7 @@ def upload_file():
     try:
         senhas_para_tentar = []
         try:
-            with open('./certificados/senhas.json', 'r', encoding='utf-8') as sf:
+            with open(os.path.join(BASE_DIR, 'certificados', 'senhas.json'), 'r', encoding='utf-8') as sf:
                 senhas_dict = json.load(sf)
             if safe_name in senhas_dict:
                 senhas_para_tentar.append(senhas_dict[safe_name])
@@ -161,7 +161,7 @@ def upload_file():
 
     # Bloquear duplicata antes de salvar
     try:
-        with open('./certificados/resultados.json', 'r', encoding='utf-8') as f:
+        with open(os.path.join(BASE_DIR, 'certificados', 'resultados.json'), 'r', encoding='utf-8') as f:
             resultados = json.load(f)
 
         # 1) Mesmo arquivo já cadastrado (mesmo nome de arquivo)
@@ -202,7 +202,7 @@ def upload_file():
         pass
 
     # Salvar apenas após validação
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], safe_name)
+    filepath = os.path.join(UPLOAD_FOLDER, safe_name)
     with open(filepath, 'wb') as f:
         f.write(pfx_data)
 
