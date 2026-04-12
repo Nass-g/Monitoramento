@@ -16,6 +16,16 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs('./static/certificados', exist_ok=True)
 
 
+@app.after_request
+def add_no_cache(response):
+    # Evita cache em JS e CSS para que correções cheguem imediatamente ao browser
+    if response.content_type and any(t in response.content_type for t in ('javascript', 'css')):
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
+
+
 # Serve o dashboard sempre sem cache (evita versão desatualizada no browser)
 def _serve_page(filename):
     resp = make_response(send_from_directory('static', filename))
