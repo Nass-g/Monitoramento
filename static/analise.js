@@ -441,17 +441,5 @@
 
   updateBtn.addEventListener('click', handleUpdate);
 
-  // Boot: exibe dados existentes imediatamente, depois escaneia em background
-  (async () => {
-    await refreshData(); // mostra o que já tem no JSON — instantâneo
-
-    // Scan silencioso em background (atualiza sem travar a tela)
-    updateBtn.disabled = true;
-    updateIcon.classList.add('spin-loop');
-    try { await updateCertificates(); } catch { /* servidor offline, mantém dados atuais */ }
-    updateBtn.disabled = false;
-    updateIcon.classList.remove('spin-loop');
-
-    await refreshData(); // re-renderiza com dados frescos do scan
-  })();
+  refreshData();
 })();
