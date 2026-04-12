@@ -51,7 +51,7 @@
   });
 
   function progressColor(status) {
-    if (status === 'Valido') return 'linear-gradient(90deg, #143f84, #4d87db)';
+    if (status === 'Válido') return 'linear-gradient(90deg, #143f84, #4d87db)';
     if (status === 'A vencer') return 'linear-gradient(90deg, #d19216, #efc058)';
     return 'linear-gradient(90deg, #c63b3b, #ef7d7d)';
   }
@@ -76,7 +76,7 @@
   }
 
   function badgeClass(status) {
-    if (status === 'Valido') return 'ok';
+    if (status === 'Válido') return 'ok';
     if (status === 'A vencer') return 'warn';
     return 'danger';
   }
