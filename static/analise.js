@@ -1,15 +1,16 @@
 ﻿(function () {
-  const {
-    alertMessage,
-    countSummary,
-    exportCertificates,
-    formatCNPJ,
-    loadCertificates,
-    removeCertificate,
-    setText,
-    sortByPriority,
-    updateCertificates,
-  } = window.DashboardData;
+  const { alertMessage, countSummary, exportCertificates, formatCNPJ, loadCertificates,
+    removeCertificate, setText, sortByPriority, updateCertificates } = window.DashboardData;
+
+  // Sanitiza texto antes de inserir em innerHTML — previne XSS
+  function esc(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
 
   const state = {
     certificates: [],
@@ -135,31 +136,31 @@
       <div class="detail-list">
         <div class="detail-item">
           <strong>Empresa</strong>
-          <span>${cert.empresa}</span>
+          <span>${esc(cert.empresa)}</span>
         </div>
         <div class="detail-item">
           <strong>CNPJ</strong>
-          <span>${formatCNPJ(cert.cnpj)}</span>
+          <span>${esc(formatCNPJ(cert.cnpj))}</span>
         </div>
         <div class="detail-item">
           <strong>Vencimento</strong>
-          <span>${cert.vencimento}</span>
+          <span>${esc(cert.vencimento)}</span>
         </div>
         <div class="detail-item">
           <strong>Janela</strong>
-          <span>${daysLabel(cert.dias)}</span>
+          <span>${esc(daysLabel(cert.dias))}</span>
         </div>
         <div class="detail-item">
           <strong>Situação</strong>
-          <span>${cert.status}</span>
+          <span>${esc(cert.status)}</span>
         </div>
         <div class="detail-item">
           <strong>Risco</strong>
-          <span>${cert.risk.label}</span>
+          <span>${esc(cert.risk.label)}</span>
         </div>
         <div class="detail-item">
           <strong>Arquivo</strong>
-          <span>${cert.arquivo || '-'}</span>
+          <span>${esc(cert.arquivo || '-')}</span>
         </div>
       </div>
     `;
@@ -203,15 +204,15 @@
       return `
         <div class="row ${rowClass(item)}${selectedClass}" data-row-idx="${index}">
           <div class="company">
-            <strong title="${item.empresa}">${item.empresa}</strong>
+            <strong title="${esc(item.empresa)}">${esc(item.empresa)}</strong>
             <span>${duplicateBadge}</span>
           </div>
-          <div class="cell" data-label="CNPJ">${formatCNPJ(item.cnpj)}</div>
-          <div class="cell" data-label="Vencimento">${item.vencimento}</div>
+          <div class="cell" data-label="CNPJ">${esc(formatCNPJ(item.cnpj))}</div>
+          <div class="cell" data-label="Vencimento">${esc(item.vencimento)}</div>
           <div class="cell days" data-label="Dias">${item.dias}</div>
-          <div class="cell" data-label="Risco"><span class="risk ${item.risk.className}">${item.risk.label}</span></div>
+          <div class="cell" data-label="Risco"><span class="risk ${item.risk.className}">${esc(item.risk.label)}</span></div>
           <div class="status-wrap" data-label="Situação">
-            <span class="badge ${badgeClass(item.status)}">${item.status}</span>
+            <span class="badge ${badgeClass(item.status)}">${esc(item.status)}</span>
             <div class="bar"><div style="width:${progressWidth(item.dias)}%; background:${progressColor(item.status)}"></div></div>
           </div>
           <div class="cell" data-label="Ação">${rowActionsTemplate(index)}</div>

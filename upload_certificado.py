@@ -3,6 +3,7 @@ import sys
 import json
 import ler_certificados
 from flask import Flask, request, jsonify, send_from_directory, redirect, make_response
+from werkzeug.utils import secure_filename
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.hazmat.backends import default_backend
 
@@ -88,17 +89,21 @@ def upload_file():
     if not (file and allowed_file(file.filename)):
         return jsonify({'error': 'Arquivo não permitido'}), 400
 
+    safe_name = secure_filename(file.filename)
+    if not safe_name:
+        return jsonify({'error': 'Nome de arquivo inválido'}), 400
+
     pfx_data = file.read()
 
     # Arquivo físico já existe no disco?
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], safe_name)
     if os.path.exists(filepath):
         # Buscar dados completos no resultados.json
-        info = {'arquivo': file.filename, 'nome': '', 'cnpj': '', 'vencimento': ''}
+        info = {'arquivo': safe_name, 'nome': '', 'cnpj': '', 'vencimento': ''}
         try:
             with open('./certificados/resultados.json', 'r', encoding='utf-8') as f:
                 resultados = json.load(f)
-            encontrado = next((r for r in resultados if r.get('arquivo') == file.filename), None)
+            encontrado = next((r for r in resultados if r.get('arquivo') == safe_name), None)
             if encontrado:
                 info['nome'] = encontrado.get('nome', '')
                 info['cnpj'] = encontrado.get('cnpj', '')
@@ -116,8 +121,8 @@ def upload_file():
         try:
             with open('./certificados/senhas.json', 'r', encoding='utf-8') as sf:
                 senhas_dict = json.load(sf)
-            if file.filename in senhas_dict:
-                senhas_para_tentar.append(senhas_dict[file.filename])
+            if safe_name in senhas_dict:
+                senhas_para_tentar.append(senhas_dict[safe_name])
         except Exception:
             pass
         senhas_para_tentar += [s for s in ler_certificados.SENHAS_PADRAO if s not in senhas_para_tentar]
@@ -139,7 +144,7 @@ def upload_file():
             resultados = json.load(f)
 
         # 1) Mesmo arquivo já cadastrado (mesmo nome de arquivo)
-        mesmo_arquivo = next((r for r in resultados if r.get('arquivo') == file.filename), None)
+        mesmo_arquivo = next((r for r in resultados if r.get('arquivo') == safe_name), None)
         if mesmo_arquivo:
             return jsonify({
                 'success': False,
@@ -176,7 +181,7 @@ def upload_file():
         pass
 
     # Salvar apenas após validação
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], safe_name)
     with open(filepath, 'wb') as f:
         f.write(pfx_data)
 
@@ -184,9 +189,9 @@ def upload_file():
     try:
         ler_certificados.varrer_certificados()
     except Exception as e:
-        return jsonify({'success': True, 'filename': file.filename, 'warn': f'Upload ok, mas erro ao varrer: {e}'}), 200
+        return jsonify({'success': True, 'filename': safe_name, 'warn': f'Upload ok, mas erro ao varrer: {e}'}), 200
 
-    return jsonify({'success': True, 'filename': file.filename}), 200
+    return jsonify({'success': True, 'filename': safe_name}), 200
 
 
 @app.route('/atualizar', methods=['POST'])
