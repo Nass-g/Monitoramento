@@ -118,6 +118,7 @@
               <div>Ação</div>
             </div>
             <div class="rows" id="rows"></div>
+            <div class="pagination" id="pagination"></div>
           </div>
         </section>
       </section>
@@ -139,6 +140,16 @@
     </div>
     <div class="drawer-body" id="detailContent"></div>
   </aside>
+
+  <!-- Modal de confirmação -->
+  <div class="modal-overlay" id="modalOverlay" aria-hidden="true"></div>
+  <div class="modal-dialog" id="modalDialog" role="alertdialog" aria-modal="true">
+    <p id="modalMessage"></p>
+    <div class="modal-actions">
+      <button class="btn" id="modalCancel" type="button">Cancelar</button>
+      <button class="btn btn-danger" id="modalConfirm" type="button">Remover</button>
+    </div>
+  </div>
 
   <script src="/static/dashboard-data.js"></script>
   <script src="/static/analise.js"></script>

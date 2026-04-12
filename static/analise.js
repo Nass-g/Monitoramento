@@ -15,6 +15,8 @@
     certificates: [],
     activeFilter: 'todos',
     selectedCertificate: null,
+    currentPage: 1,
+    pageSize: 15,
   };
 
   const rows = document.getElementById('rows');
@@ -159,10 +161,6 @@
           <strong>Arquivo</strong>
           <span>${cert.arquivo || '-'}</span>
         </div>
-        <div class="detail-item">
-          <strong>Senha utilizada</strong>
-          <span>${cert.senha_utilizada || '-'}</span>
-        </div>
       </div>
     `;
 
@@ -183,10 +181,16 @@
   }
 
   function renderRows() {
-    const data = filteredCertificates();
+    const allData    = filteredCertificates();
+    const total      = allData.length;
+    const totalPages = Math.ceil(total / state.pageSize) || 1;
+    if (state.currentPage > totalPages) state.currentPage = totalPages;
+    const start = (state.currentPage - 1) * state.pageSize;
+    const data  = allData.slice(start, start + state.pageSize);
 
-    if (!data.length) {
+    if (!total) {
       rows.innerHTML = '<div class="empty-state">Nenhum certificado encontrado para os filtros aplicados.</div>';
+      if ($('pagination')) $('pagination').innerHTML = '';
       return;
     }
 
@@ -236,18 +240,70 @@
     });
 
     rows.querySelectorAll('.btn-remover').forEach(button => {
-      button.addEventListener('click', async (event) => {
+      button.addEventListener('click', (event) => {
         event.stopPropagation();
         const cert = data[Number(button.dataset.idx)];
-        if (!confirm(`Remover certificado da empresa "${cert.empresa}"?`)) return;
+        showConfirmModal(`Remover certificado da empresa "${cert.empresa}"?`, async () => {
+          const response = await removeCertificate(cert.cnpj);
+          if (response.success) {
+            showToast('ok', 'Certificado removido', cert.empresa);
+            await refreshData();
+          } else {
+            showToast('err', 'Falha ao remover', response.error || 'Erro ao remover certificado.');
+          }
+        });
+      });
+    });
 
-        const response = await removeCertificate(cert.cnpj);
-        if (response.success) {
-          showToast('ok', 'Certificado removido', cert.empresa);
-          await refreshData();
-        } else {
-          showToast('err', 'Falha ao remover', response.error || 'Erro ao remover certificado.');
-        }
+    renderPagination(total);
+  }
+
+  function showConfirmModal(message, onConfirm) {
+    const overlay = $('modalOverlay');
+    const dialog  = $('modalDialog');
+    $('modalMessage').textContent = message;
+    overlay.classList.add('open');
+    dialog.classList.add('open');
+
+    function close() {
+      overlay.classList.remove('open');
+      dialog.classList.remove('open');
+    }
+
+    $('modalConfirm').onclick = () => { close(); onConfirm(); };
+    $('modalCancel').onclick  = close;
+    overlay.onclick           = close;
+  }
+
+  function renderPagination(total) {
+    const pag = $('pagination');
+    if (!pag) return;
+    const totalPages = Math.ceil(total / state.pageSize);
+    if (totalPages <= 1) { pag.innerHTML = ''; return; }
+
+    const cur   = state.currentPage;
+    const pages = [];
+    pages.push(1);
+    if (cur > 3) pages.push('...');
+    for (let i = Math.max(2, cur - 1); i <= Math.min(totalPages - 1, cur + 1); i++) pages.push(i);
+    if (cur < totalPages - 2) pages.push('...');
+    if (totalPages > 1) pages.push(totalPages);
+
+    const mkBtn = (p, label, disabled, active) =>
+      `<button class="page-btn${active ? ' active' : ''}" data-page="${p}" ${disabled ? 'disabled' : ''}>${label}</button>`;
+
+    let html = mkBtn(cur - 1, '‹ Anterior', cur === 1, false);
+    html += pages.map(p =>
+      p === '...' ? `<span class="page-ellipsis">…</span>` : mkBtn(p, p, false, p === cur)
+    ).join('');
+    html += mkBtn(cur + 1, 'Próximo ›', cur === totalPages, false);
+
+    pag.innerHTML = html;
+    pag.querySelectorAll('.page-btn:not([disabled])').forEach(b => {
+      b.addEventListener('click', () => {
+        state.currentPage = Number(b.dataset.page);
+        renderRows();
+        rows.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     });
   }
@@ -364,11 +420,12 @@
       filterButtons.forEach(node => node.classList.remove('active'));
       button.classList.add('active');
       state.activeFilter = button.dataset.filter;
+      state.currentPage = 1;
       renderRows();
     });
   });
 
-  searchInput.addEventListener('input', renderRows);
+  searchInput.addEventListener('input', () => { state.currentPage = 1; renderRows(); });
 
   fileInput.addEventListener('change', async function () {
     const file = this.files[0];
