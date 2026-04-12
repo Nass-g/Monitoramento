@@ -2,6 +2,8 @@
   const { alertMessage, countSummary, exportCertificates, formatCNPJ, loadCertificates,
     removeCertificate, setText, sortByPriority, updateCertificates } = window.DashboardData;
 
+  const $ = (id) => document.getElementById(id);
+
   // Sanitiza texto antes de inserir em innerHTML — previne XSS
   function esc(value) {
     return String(value ?? '')
