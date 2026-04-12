@@ -441,5 +441,6 @@
 
   updateBtn.addEventListener('click', handleUpdate);
 
-  refreshData();
+  // Na carga inicial, dispara scan automático para garantir dados atualizados
+  handleUpdate();
 })();
