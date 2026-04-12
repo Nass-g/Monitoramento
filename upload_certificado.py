@@ -1,6 +1,7 @@
 ﻿import os
 import sys
 import json
+import time
 import ler_certificados
 from flask import Flask, request, jsonify, send_from_directory, redirect, make_response
 from werkzeug.utils import secure_filename
@@ -9,6 +10,9 @@ from cryptography.hazmat.backends import default_backend
 
 UPLOAD_FOLDER = './certificados/'
 ALLOWED_EXTENSIONS = {'pfx'}
+
+# Timestamp gerado uma vez ao iniciar o servidor — garante JS sempre fresco no browser
+_BOOT_TS = str(int(time.time()))
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -26,9 +30,16 @@ def add_no_cache(response):
     return response
 
 
-# Serve o dashboard sempre sem cache (evita versão desatualizada no browser)
+# Serve o dashboard sempre sem cache, injetando versao dinamica nos scripts
 def _serve_page(filename):
-    resp = make_response(send_from_directory('static', filename))
+    filepath = os.path.join('static', filename)
+    with open(filepath, 'r', encoding='utf-8') as f:
+        content = f.read()
+    # Substitui qualquer ?v=XXXX pelo timestamp atual do boot
+    import re
+    content = re.sub(r'\?v=[^"]+', f'?v={_BOOT_TS}', content)
+    resp = make_response(content, 200)
+    resp.headers['Content-Type'] = 'text/html; charset=utf-8'
     resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     resp.headers['Pragma'] = 'no-cache'
     resp.headers['Expires'] = '0'
