@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+
+# Certificados sensíveis — não versionar arquivos PFX nem senhas
+certificados/*.pfx
+certificados/senhas.json
+static/certificados/senhas.json
+
+# Resultados gerados automaticamente
+certificados/resultados.json
+static/certificados/resultados.json
+
+# OS
+.DS_Store
+Thumbs.db
