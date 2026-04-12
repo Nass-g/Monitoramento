@@ -441,6 +441,11 @@
 
   updateBtn.addEventListener('click', handleUpdate);
 
-  // Na carga inicial, dispara scan automático para garantir dados atualizados
-  handleUpdate();
+  // Carga inicial: scan silencioso (sem toasts nem mensagens)
+  (async () => {
+    updateBtn.disabled = true;
+    updateIcon.classList.add('spin-loop');
+    try { await updateCertificates(); } catch { /* servidor offline, segue com o que tem */ }
+    await refreshData();
+  })();
 })();
