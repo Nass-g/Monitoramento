@@ -18,7 +18,7 @@
   function getStatus(days) {
     if (days < 0) return 'Expirado';
     if (days <= 15) return 'A vencer';
-    return 'Valido';
+    return 'Válido';
   }
 
   function getRisk(days) {
@@ -72,9 +72,15 @@
   }
 
   async function loadCertificates() {
-    const response = await fetch(DATA_URL, { cache: 'no-store' });
-    const json = await response.json();
-    return json.map(normalizeCertificate);
+    try {
+      const response = await fetch(DATA_URL, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const json = await response.json();
+      return json.map(normalizeCertificate);
+    } catch (err) {
+      console.error('[DashboardData] Falha ao carregar certificados:', err);
+      return [];
+    }
   }
 
   async function removeCertificate(cnpj) {

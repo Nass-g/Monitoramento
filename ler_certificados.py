@@ -11,6 +11,9 @@ CERTS_DIR = './certificados/'
 SENHAS_FILE = './certificados/senhas.json'
 RESULT_FILE = './certificados/resultados.json'
 
+# Senhas padrão testadas quando o arquivo não tem senha cadastrada
+SENHAS_PADRAO = ['div2024', 'div2025', 'comercio2024', 'comercio2025', '123456', '12345678']
+
 def extrair_cnpj_nome(cert):
     import re
     subject = cert.subject
@@ -44,11 +47,6 @@ def varrer_certificados():
         print(f'Erro ao carregar senhas: {e}')
         return
 
-    # Lista de senhas para testar
-    senhas_teste = [
-        'div2024', 'div2025', 'comercio2024', 'comercio2025', '123456', '12345678'
-    ]
-
     arquivos_pfx = glob.glob(os.path.join(CERTS_DIR, '*.pfx'))
     resultados = []
     for pfx_path in arquivos_pfx:
@@ -57,7 +55,7 @@ def varrer_certificados():
         senhas_para_tentar = []
         if nome_arquivo in senhas_dict:
             senhas_para_tentar.append(senhas_dict[nome_arquivo])
-        senhas_para_tentar += [s for s in senhas_teste if s not in senhas_para_tentar]
+        senhas_para_tentar += [s for s in SENHAS_PADRAO if s not in senhas_para_tentar]
         with open(pfx_path, 'rb') as f:
             pfx_data = f.read()
         sucesso = False
@@ -67,7 +65,7 @@ def varrer_certificados():
                     pfx_data, senha.encode(), backend=default_backend()
                 )
                 cnpj, nome = extrair_cnpj_nome(cert)
-                vencimento = cert.not_valid_after.strftime('%d/%m/%Y')
+                vencimento = cert.not_valid_after_utc.strftime('%d/%m/%Y')
                 resultados.append({'arquivo': nome_arquivo, 'cnpj': cnpj, 'nome': nome, 'vencimento': vencimento, 'senha_utilizada': senha})
                 print(f'{nome_arquivo}: CNPJ={cnpj}, Nome={nome}, Vencimento={vencimento}, Senha={senha}')
                 sucesso = True

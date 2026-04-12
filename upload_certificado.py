@@ -1,6 +1,7 @@
 ﻿import os
 import sys
 import json
+import ler_certificados
 from flask import Flask, request, jsonify, send_from_directory, redirect, make_response
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.hazmat.backends import default_backend
@@ -89,7 +90,7 @@ def upload_file():
 
     pfx_data = file.read()
 
-    # Arquivo fÃ­sico jÃ¡ existe no disco?
+    # Arquivo físico já existe no disco?
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
     if os.path.exists(filepath):
         # Buscar dados completos no resultados.json
@@ -111,11 +112,6 @@ def upload_file():
     vencimento_novo = None
     nome_novo = None
     try:
-        import importlib, sys
-        if 'ler_certificados' in sys.modules:
-            importlib.reload(sys.modules['ler_certificados'])
-        import ler_certificados
-
         senhas_para_tentar = []
         try:
             with open('./certificados/senhas.json', 'r', encoding='utf-8') as sf:
@@ -124,13 +120,13 @@ def upload_file():
                 senhas_para_tentar.append(senhas_dict[file.filename])
         except Exception:
             pass
-        senhas_para_tentar += [s for s in ['div2024','div2025','comercio2024','comercio2025','123456','12345678'] if s not in senhas_para_tentar]
+        senhas_para_tentar += [s for s in ler_certificados.SENHAS_PADRAO if s not in senhas_para_tentar]
 
         for senha in senhas_para_tentar:
             try:
                 _, cert, _ = pkcs12.load_key_and_certificates(pfx_data, senha.encode(), backend=default_backend())
                 cnpj_novo, nome_novo = ler_certificados.extrair_cnpj_nome(cert)
-                vencimento_novo = cert.not_valid_after.strftime('%d/%m/%Y')
+                vencimento_novo = cert.not_valid_after_utc.strftime('%d/%m/%Y')
                 break
             except Exception:
                 continue
@@ -186,10 +182,6 @@ def upload_file():
 
     # Reprocessar todos os certificados
     try:
-        import importlib, sys
-        if 'ler_certificados' in sys.modules:
-            importlib.reload(sys.modules['ler_certificados'])
-        import ler_certificados
         ler_certificados.varrer_certificados()
     except Exception as e:
         return jsonify({'success': True, 'filename': file.filename, 'warn': f'Upload ok, mas erro ao varrer: {e}'}), 200
@@ -200,10 +192,6 @@ def upload_file():
 @app.route('/atualizar', methods=['POST'])
 def atualizar_certificados():
     try:
-        import importlib
-        if 'ler_certificados' in sys.modules:
-            importlib.reload(sys.modules['ler_certificados'])
-        import ler_certificados
         ler_certificados.varrer_certificados()
         return jsonify({'success': True}), 200
     except Exception as e:
