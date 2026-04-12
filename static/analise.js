@@ -441,5 +441,13 @@
 
   updateBtn.addEventListener('click', handleUpdate);
 
-  refreshData();
+  // Boot silencioso: escaneia os .pfx e carrega os dados sem mostrar nada ao usuário
+  (async () => {
+    updateBtn.disabled = true;
+    updateIcon.classList.add('spin-loop');
+    try { await updateCertificates(); } catch { /* servidor offline — segue com o que tem */ }
+    updateBtn.disabled = false;
+    updateIcon.classList.remove('spin-loop');
+    await refreshData();
+  })();
 })();
