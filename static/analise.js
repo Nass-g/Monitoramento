@@ -1,6 +1,6 @@
 ﻿(function () {
   const { alertMessage, countSummary, exportCertificates, formatCNPJ, loadCertificates,
-    formatLoadError, removeCertificate, setText, sortByPriority, updateCertificates } = window.DashboardData;
+    formatLoadError, notifyDataChanged, removeCertificate, setText, sortByPriority, updateCertificates } = window.DashboardData;
 
   const $ = (id) => document.getElementById(id);
 
@@ -256,6 +256,13 @@
         showConfirmModal(`Remover certificado da empresa "${cert.empresa}"?`, async () => {
           const response = await removeCertificate(cert.id, cert.arquivo);
           if (response.success) {
+            state.certificates = state.certificates.filter(item => item.id !== cert.id);
+            if (state.selectedCertificate && state.selectedCertificate.id === cert.id) {
+              closeDrawer();
+            }
+            renderSummary();
+            renderRows();
+            notifyDataChanged('removed');
             showToast('ok', 'Certificado removido', cert.empresa);
             await refreshData();
           } else {
@@ -367,6 +374,7 @@
         showToast('warn', 'Certificado já existe', `${empresa}${cnpj}${venc}`, 9000);
       } else if (data.success) {
         setUploadMessage('<span style="color: #1f9d62; font-weight: 700;">Sucesso: certificado importado.</span>');
+        notifyDataChanged('uploaded');
         showToast('ok', 'Certificado importado', file.name);
         await refreshData();
       } else {
@@ -410,6 +418,7 @@
       const result = await updateCertificates();
       if (result.success) {
         setUploadMessage('<span style="color: #1f9d62; font-weight: 700;">Base atualizada com sucesso.</span>');
+        notifyDataChanged('updated');
         showToast('ok', 'Base atualizada', 'Leitura dos certificados concluída.');
         state.certificates = await loadCertificates();
         state.loadError = '';

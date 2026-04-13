@@ -1,7 +1,7 @@
 ﻿(function () {
   'use strict';
 
-  const { countSummary, formatCNPJ, formatLoadError, loadCertificates, setText, sortByPriority } = window.DashboardData;
+  const { countSummary, formatCNPJ, formatLoadError, loadCertificates, setText, sortByPriority, subscribeToDataChanges } = window.DashboardData;
 
   // ── Estado e refs DOM ────────────────────────────────────
   let certs = [];
@@ -344,6 +344,10 @@
 
   renderClock();
   refresh();
+  subscribeToDataChanges(() => {
+    cd = 60;
+    refresh();
+  });
 
   setInterval(renderClock, 1000);
   setInterval(() => {

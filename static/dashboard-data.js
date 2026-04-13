@@ -1,5 +1,9 @@
 ﻿(function () {
   const DATA_URL = '/api/certificados';
+  const SYNC_EVENT = 'dashboard-certificados-atualizados';
+  const syncChannel = typeof BroadcastChannel !== 'undefined'
+    ? new BroadcastChannel(SYNC_EVENT)
+    : null;
 
   function parseDateBR(value) {
     if (!value || typeof value !== 'string' || !value.includes('/')) return null;
@@ -117,6 +121,52 @@
     return response.json();
   }
 
+  function notifyDataChanged(reason) {
+    const payload = {
+      reason: reason || 'updated',
+      timestamp: Date.now(),
+    };
+
+    if (syncChannel) {
+      syncChannel.postMessage(payload);
+    }
+
+    try {
+      localStorage.setItem(SYNC_EVENT, JSON.stringify(payload));
+    } catch {
+      // Ignora indisponibilidade de storage; BroadcastChannel cobre navegadores compatíveis.
+    }
+  }
+
+  function subscribeToDataChanges(handler) {
+    if (typeof handler !== 'function') return () => {};
+
+    const onChannelMessage = (event) => {
+      handler(event.data || { reason: 'updated', timestamp: Date.now() });
+    };
+
+    const onStorage = (event) => {
+      if (event.key !== SYNC_EVENT || !event.newValue) return;
+      try {
+        handler(JSON.parse(event.newValue));
+      } catch {
+        handler({ reason: 'updated', timestamp: Date.now() });
+      }
+    };
+
+    if (syncChannel) {
+      syncChannel.addEventListener('message', onChannelMessage);
+    }
+    window.addEventListener('storage', onStorage);
+
+    return () => {
+      if (syncChannel) {
+        syncChannel.removeEventListener('message', onChannelMessage);
+      }
+      window.removeEventListener('storage', onStorage);
+    };
+  }
+
   function exportCertificates(data) {
     const csv = 'Nome;CNPJ;Vencimento;Dias;Status\n' + data.map(item =>
       `${item.empresa};${item.cnpj};${item.vencimento};${item.dias};${item.status}`
@@ -153,9 +203,11 @@
     formatCNPJ,
     formatLoadError,
     loadCertificates,
+    notifyDataChanged,
     removeCertificate,
     setText,
     sortByPriority,
+    subscribeToDataChanges,
     updateCertificates,
   };
 })();
