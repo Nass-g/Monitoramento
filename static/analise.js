@@ -1,6 +1,6 @@
 ﻿(function () {
   const { alertMessage, countSummary, exportCertificates, formatCNPJ, loadCertificates,
-    removeCertificate, setText, sortByPriority, updateCertificates } = window.DashboardData;
+    formatLoadError, removeCertificate, setText, sortByPriority, updateCertificates } = window.DashboardData;
 
   const $ = (id) => document.getElementById(id);
 
@@ -20,6 +20,7 @@
     selectedCertificate: null,
     currentPage: 1,
     pageSize: 15,
+    loadError: '',
   };
 
   const rows = document.getElementById('rows');
@@ -121,7 +122,7 @@
   function renderSummary() {
     const summary = countSummary(state.certificates);
 
-    setText('mainAlert', alertMessage(summary));
+    setText('mainAlert', state.loadError || alertMessage(summary));
     setText('analysisTotal', summary.total);
     setText('impactCount', summary.expired);
     setText('highRiskCount', summary.next5);
@@ -184,6 +185,12 @@
   }
 
   function renderRows() {
+    if (state.loadError) {
+      rows.innerHTML = `<div class="empty-state">Erro ao carregar a base: ${esc(state.loadError)}</div>`;
+      if ($('pagination')) $('pagination').innerHTML = '';
+      return;
+    }
+
     const allData    = filteredCertificates();
     const total      = allData.length;
     const totalPages = Math.ceil(total / state.pageSize) || 1;
@@ -198,7 +205,7 @@
     }
 
     rows.innerHTML = data.map((item, index) => {
-      const selectedClass = state.selectedCertificate && state.selectedCertificate.cnpj === item.cnpj ? ' selected' : '';
+      const selectedClass = state.selectedCertificate && state.selectedCertificate.id === item.id ? ' selected' : '';
       const duplicateBadge = item.duplicado
         ? '<span class="dup-badge" title="Mesmo CNPJ e vencimento de outro certificado">Duplicado</span>'
         : '';
@@ -247,7 +254,7 @@
         event.stopPropagation();
         const cert = data[Number(button.dataset.idx)];
         showConfirmModal(`Remover certificado da empresa "${cert.empresa}"?`, async () => {
-          const response = await removeCertificate(cert.cnpj);
+          const response = await removeCertificate(cert.id, cert.arquivo);
           if (response.success) {
             showToast('ok', 'Certificado removido', cert.empresa);
             await refreshData();
@@ -379,10 +386,13 @@
 
     try {
       state.certificates = await loadCertificates();
+      state.loadError = '';
       renderSummary();
       renderRows();
     } catch (error) {
       state.certificates = [];
+      state.loadError = formatLoadError(error);
+      setUploadMessage(`<span style="color: #d54a4a; font-weight: 700;">Erro ao carregar a base: ${esc(state.loadError)}</span>`);
       renderSummary();
       renderRows();
     } finally {
@@ -402,6 +412,7 @@
         setUploadMessage('<span style="color: #1f9d62; font-weight: 700;">Base atualizada com sucesso.</span>');
         showToast('ok', 'Base atualizada', 'Leitura dos certificados concluída.');
         state.certificates = await loadCertificates();
+        state.loadError = '';
         renderSummary();
         renderRows();
       } else {
@@ -409,9 +420,14 @@
         setUploadMessage(`<span style="color: #d54a4a; font-weight: 700;">Erro: ${msg}</span>`);
         showToast('err', 'Falha ao atualizar', msg);
       }
-    } catch {
-      setUploadMessage('<span style="color: #d54a4a; font-weight: 700;">Erro: conexão com o servidor indisponível.</span>');
-      showToast('err', 'Erro de conexão', 'Não foi possível conectar ao servidor.');
+    } catch (error) {
+      const msg = formatLoadError(error);
+      state.certificates = [];
+      state.loadError = msg;
+      renderSummary();
+      renderRows();
+      setUploadMessage(`<span style="color: #d54a4a; font-weight: 700;">Erro: ${esc(msg)}</span>`);
+      showToast('err', 'Falha ao atualizar', msg);
     } finally {
       updateBtn.disabled = false;
       updateIcon.classList.remove('spin-loop');
@@ -443,13 +459,8 @@
 
   updateBtn.addEventListener('click', handleUpdate);
 
-  // Boot silencioso: escaneia os .pfx e carrega os dados sem mostrar nada ao usuário
+  // Boot silencioso: carrega os dados atuais sem forçar nova varredura do backend
   (async () => {
-    updateBtn.disabled = true;
-    updateIcon.classList.add('spin-loop');
-    try { await updateCertificates(); } catch { /* servidor offline — segue com o que tem */ }
-    updateBtn.disabled = false;
-    updateIcon.classList.remove('spin-loop');
     await refreshData();
   })();
 })();

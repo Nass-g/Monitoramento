@@ -1,5 +1,5 @@
 ﻿(function () {
-  const DATA_URL = '/static/certificados/resultados.json';
+  const DATA_URL = '/api/certificados';
 
   function parseDateBR(value) {
     if (!value || typeof value !== 'string' || !value.includes('/')) return null;
@@ -33,11 +33,11 @@
     const days = getDaysUntil(expiresAt);
 
     return {
+      id: item.id || [item.arquivo || '', item.cnpj || '', item.vencimento || ''].join('|'),
       arquivo: item.arquivo || '',
       empresa: item.empresa || item.nome || 'Empresa não identificada',
       cnpj: item.cnpj || '',
       vencimento: item.vencimento || '-',
-      senha_utilizada: item.senha_utilizada || '',
       duplicado: Boolean(item.duplicado),
       dias: days,
       status: getStatus(days),
@@ -72,22 +72,41 @@
   }
 
   async function loadCertificates() {
+    const response = await fetch(DATA_URL, { cache: 'no-store' });
+    let payload = null;
+
     try {
-      const response = await fetch(DATA_URL, { cache: 'no-store' });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const json = await response.json();
-      return json.map(normalizeCertificate);
-    } catch (err) {
-      console.error('[DashboardData] Falha ao carregar certificados:', err);
-      return [];
+      payload = await response.json();
+    } catch {
+      payload = null;
     }
+
+    if (!response.ok) {
+      const detail = payload && payload.error ? payload.error : `HTTP ${response.status}`;
+      const error = new Error(detail);
+      console.error('[DashboardData] Falha ao carregar certificados:', error);
+      throw error;
+    }
+
+    if (!Array.isArray(payload)) {
+      const error = new Error('Resposta inválida ao carregar certificados.');
+      console.error('[DashboardData] Falha ao carregar certificados:', error);
+      throw error;
+    }
+
+    return payload.map(normalizeCertificate);
   }
 
-  async function removeCertificate(cnpj) {
+  function formatLoadError(error) {
+    if (!error) return 'Não foi possível carregar a base de certificados.';
+    return error.message || 'Não foi possível carregar a base de certificados.';
+  }
+
+  async function removeCertificate(id, arquivo) {
     const response = await fetch('/remover', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cnpj }),
+      body: JSON.stringify({ id, arquivo }),
     });
 
     return response.json();
@@ -132,6 +151,7 @@
     countSummary,
     exportCertificates,
     formatCNPJ,
+    formatLoadError,
     loadCertificates,
     removeCertificate,
     setText,

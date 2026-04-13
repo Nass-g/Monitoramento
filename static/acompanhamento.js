@@ -1,11 +1,37 @@
 ﻿(function () {
   'use strict';
 
-  const { countSummary, formatCNPJ, loadCertificates, setText, sortByPriority } = window.DashboardData;
+  const { countSummary, formatCNPJ, formatLoadError, loadCertificates, setText, sortByPriority } = window.DashboardData;
 
   // ── Estado e refs DOM ────────────────────────────────────
   let certs = [];
+  let loadError = '';
   const $ = id => document.getElementById(id);
+
+  function renderLoadError(message) {
+    const tvAlert = $('tvAlert');
+    const badge = $('liveBadge');
+    const bars = $('hbarList');
+    const chart = $('lineWrap');
+
+    if (tvAlert) {
+      tvAlert.textContent = `Falha ao carregar base: ${message}`;
+      tvAlert.style.color = 'var(--danger)';
+    }
+
+    if (badge) {
+      badge.innerHTML = `<span class="live-dot danger-dot"></span>Falha na atualização`;
+      badge.className = 'hero-badge live danger';
+    }
+
+    if (bars) {
+      bars.innerHTML = `<div class="tv-loading">Erro ao carregar certificados: ${message}</div>`;
+    }
+
+    if (chart) {
+      chart.innerHTML = `<div class="tv-loading">Erro ao carregar certificados: ${message}</div>`;
+    }
+  }
 
   // ── Contador animado ─────────────────────────────────────
   const _counters = {};
@@ -286,6 +312,14 @@
 
   // ── Render completo ───────────────────────────────────────
   function render() {
+    if (loadError) {
+      const summary = countSummary([]);
+      renderKPIs(summary, []);
+      renderClock();
+      renderLoadError(loadError);
+      return;
+    }
+
     const summary = countSummary(certs);
     renderKPIs(summary, certs);
     renderBars(certs);
@@ -295,8 +329,13 @@
 
   // ── Refresh de dados ──────────────────────────────────────
   async function refresh() {
-    try { certs = await loadCertificates(); }
-    catch { certs = []; }
+    try {
+      certs = await loadCertificates();
+      loadError = '';
+    } catch (error) {
+      certs = [];
+      loadError = formatLoadError(error);
+    }
     render();
   }
 

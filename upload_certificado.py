@@ -1,10 +1,9 @@
 ﻿import os
 import re
-import sys
 import json
 import time
 import ler_certificados
-from flask import Flask, request, jsonify, send_from_directory, redirect, make_response
+from flask import Flask, request, jsonify, make_response
 from werkzeug.utils import secure_filename
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.hazmat.backends import default_backend
@@ -56,6 +55,20 @@ def analise():
     return _serve_page('analise.html')
 
 
+@app.route('/api/certificados')
+def listar_certificados():
+    try:
+        resultados = ler_certificados.carregar_resultados()
+    except Exception as e:
+        return jsonify({'error': f'Erro ao carregar certificados: {e}'}), 500
+
+    response = jsonify(resultados)
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
+
 
 
 def allowed_file(filename):
@@ -64,14 +77,16 @@ def allowed_file(filename):
 
 @app.route('/remover', methods=['POST'])
 def remover_certificado():
-    data = request.get_json()
-    cnpj = data.get('cnpj')
-    if not cnpj:
-        return jsonify({'error': 'CNPJ não informado'}), 400
+    data = request.get_json(silent=True) or {}
+    cert_id = data.get('id')
+    arquivo = data.get('arquivo')
+    if not cert_id and not arquivo:
+        return jsonify({'error': 'Identificador do certificado não informado'}), 400
     try:
-        with open(os.path.join(BASE_DIR, 'certificados', 'resultados.json'), 'r', encoding='utf-8') as f:
-            resultados = json.loads(f.read())
-        cert = next((c for c in resultados if c.get('cnpj') == cnpj), None)
+        resultados = ler_certificados.carregar_resultados()
+        cert = next((c for c in resultados if c.get('id') == cert_id), None)
+        if not cert and arquivo:
+            cert = next((c for c in resultados if c.get('arquivo') == arquivo), None)
         if not cert:
             return jsonify({'error': 'Certificado não encontrado'}), 404
         
@@ -83,16 +98,12 @@ def remover_certificado():
                 os.remove(caminho)
         
         # Remover do resultados.json
-        resultados = [c for c in resultados if c.get('cnpj') != cnpj]
-        with open(os.path.join(BASE_DIR, 'certificados', 'resultados.json'), 'w', encoding='utf-8') as f:
-            json.dump(resultados, f, ensure_ascii=False, indent=2)
-        
-        # Sincronizar com static/certificados/resultados.json
-        try:
-            with open(os.path.join(BASE_DIR, 'static', 'certificados', 'resultados.json'), 'w', encoding='utf-8') as f:
-                json.dump(resultados, f, ensure_ascii=False, indent=2)
-        except:
-            pass
+        cert_id_encontrado = cert.get('id')
+        if cert_id_encontrado:
+            resultados = [c for c in resultados if c.get('id') != cert_id_encontrado]
+        elif nome_arquivo:
+            resultados = [c for c in resultados if c.get('arquivo') != nome_arquivo]
+        ler_certificados.persistir_resultados(resultados)
         
         return jsonify({'success': True}), 200
     except Exception as e:
@@ -122,8 +133,7 @@ def upload_file():
         # Buscar dados completos no resultados.json
         info = {'arquivo': safe_name, 'nome': '', 'cnpj': '', 'vencimento': ''}
         try:
-            with open(os.path.join(BASE_DIR, 'certificados', 'resultados.json'), 'r', encoding='utf-8') as f:
-                resultados = json.load(f)
+            resultados = ler_certificados.carregar_resultados()
             encontrado = next((r for r in resultados if r.get('arquivo') == safe_name), None)
             if encontrado:
                 info['nome'] = encontrado.get('nome', '')
@@ -137,6 +147,7 @@ def upload_file():
     cnpj_novo = None
     vencimento_novo = None
     nome_novo = None
+    certificado_lido = False
     try:
         senhas_para_tentar = []
         try:
@@ -151,18 +162,23 @@ def upload_file():
         for senha in senhas_para_tentar:
             try:
                 _, cert, _ = pkcs12.load_key_and_certificates(pfx_data, senha.encode(), backend=default_backend())
+                if cert is None:
+                    continue
                 cnpj_novo, nome_novo = ler_certificados.extrair_cnpj_nome(cert)
                 vencimento_novo = cert.not_valid_after_utc.strftime('%d/%m/%Y')
+                certificado_lido = True
                 break
             except Exception:
                 continue
     except Exception:
         pass
 
+    if not certificado_lido:
+        return jsonify({'error': 'Não foi possível ler o certificado. Verifique se o arquivo .pfx está íntegro e se a senha está cadastrada em certificados/senhas.json.'}), 400
+
     # Bloquear duplicata antes de salvar
     try:
-        with open(os.path.join(BASE_DIR, 'certificados', 'resultados.json'), 'r', encoding='utf-8') as f:
-            resultados = json.load(f)
+        resultados = ler_certificados.carregar_resultados()
 
         # 1) Mesmo arquivo já cadastrado (mesmo nome de arquivo)
         mesmo_arquivo = next((r for r in resultados if r.get('arquivo') == safe_name), None)
@@ -198,8 +214,8 @@ def upload_file():
                 }), 409
     except FileNotFoundError:
         pass  # Primeiro certificado, sem resultados ainda
-    except Exception:
-        pass
+    except Exception as e:
+        return jsonify({'error': f'Erro ao validar a base atual: {e}'}), 500
 
     # Salvar apenas após validação
     filepath = os.path.join(UPLOAD_FOLDER, safe_name)
@@ -210,7 +226,9 @@ def upload_file():
     try:
         ler_certificados.varrer_certificados()
     except Exception as e:
-        return jsonify({'success': True, 'filename': safe_name, 'warn': f'Upload ok, mas erro ao varrer: {e}'}), 200
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        return jsonify({'error': f'Upload cancelado porque a varredura falhou: {e}'}), 500
 
     return jsonify({'success': True, 'filename': safe_name}), 200
 
